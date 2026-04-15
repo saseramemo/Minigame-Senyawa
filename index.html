@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Senyawa Project</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --mc-gui-bg: #C6C6C6;
+            --mc-button: #7C7C7C;
+            --mc-button-border-light: #FFFFFF;
+            --mc-button-border-dark: #373737;
+            --mc-button-hover: #8B8B8B;
+            --mc-text-shadow: 2px 2px #3F3F3F;
+            --mc-rare: #FFAA00;
+            --mc-redstone: #AA0000;
+            --discord-blurple: #5865F2;
+        }
+
+        * { box-sizing: border-box; image-rendering: pixelated; }
+
+        body {
+            margin: 0;
+            background-color: #1a1a1a;
+            background-image: url('https://www.transparenttextures.com/patterns/dark-matter.png');
+            font-family: 'Press Start 2P', cursive;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container { text-align: center; padding: 20px; z-index: 10; width: 100%; }
+
+        .mc-button {
+            display: inline-block;
+            background-color: var(--mc-button);
+            border: 4px solid var(--mc-button-border-dark);
+            border-top-color: var(--mc-button-border-light);
+            border-left-color: var(--mc-button-border-light);
+            color: white;
+            padding: 15px 30px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+            cursor: pointer;
+            text-shadow: var(--mc-text-shadow);
+            margin: 10px;
+            text-decoration: none;
+        }
+
+        .mc-button:hover { background-color: var(--mc-button-hover); }
+
+        .page { display: none; opacity: 0; transition: opacity 0.4s; }
+        .page.active { display: block; opacity: 1; }
+
+        /* Minigame Assets */
+        .game-box { background: var(--mc-gui-bg); border: 4px solid #373737; padding: 20px; display: inline-block; min-width: 300px; }
+        #stone-target { width: 100px; height: 100px; background: #7a7a7a; border: 6px solid #4a4a4a; margin: 20px auto; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 15px; }
+        .node { width: 50px; height: 50px; background: #333; border: 3px solid #000; cursor: pointer; }
+        .node.active { background: var(--mc-redstone); box-shadow: 0 0 10px var(--mc-redstone); }
+
+        /* Card Swipe System */
+        #card-deck {
+            position: relative;
+            width: 320px;
+            height: 450px;
+            margin: 20px auto;
+            display: none;
+        }
+
+        .swipe-card {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%;
+            height: 100%;
+            border: 8px solid var(--mc-gui-bg);
+            background: #000;
+            cursor: pointer;
+            transition: transform 0.5s, opacity 0.5s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .swipe-card img { width: 100%; height: auto; flex-grow: 1; object-fit: cover; }
+        .card-label { background: var(--mc-gui-bg); color: #333; padding: 10px; font-size: 10px; }
+
+        /* Final Photo (Preview Kecil) */
+        #photo-container {
+            margin-top: 20px;
+            display: none;
+            border: 8px solid var(--mc-gui-bg);
+            background-color: #000;
+            max-width: 350px;
+            margin-left: auto; margin-right: auto;
+        }
+        #gift-photo { display: block; width: 100%; height: auto; }
+
+        #scan-text { color: #55FF55; font-size: 10px; margin: 15px 0; }
+        .progress-bar { width: 250px; height: 20px; border: 3px solid #fff; margin: 0 auto; padding: 2px; }
+        .progress-fill { height: 100%; width: 0%; background: #55FF55; }
+        .particle { position: fixed; pointer-events: none; z-index: 999; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="page1" class="page active">
+            <h1 style="color: #55FFFF;">[ SECURE DATA ]</h1>
+            <button class="mc-button" onclick="goToStage(1)">START BYPASS</button>
+        </div>
+
+        <div id="page-s1" class="page">
+            <h3>STAGE 1: BREAK BLOCK</h3>
+            <div class="game-box">
+                <div id="stone-target" onclick="breakStone()">STONE</div>
+                <p id="stone-hp" style="color:#333; font-size:10px;">HP: 10</p>
+            </div>
+        </div>
+
+        <div id="page-s2" class="page">
+            <h3>STAGE 2: REDSTONE</h3>
+            <div class="game-box"><div class="grid" id="node-grid"></div></div>
+        </div>
+
+        <div id="page-s3" class="page">
+            <h3>STAGE 3: AUTH</h3>
+            <div class="game-box">
+                <button class="mc-button" onclick="checkSeq(1)">1</button>
+                <button class="mc-button" onclick="checkSeq(2)">2</button>
+                <button class="mc-button" onclick="checkSeq(3)">3</button>
+            </div>
+        </div>
+
+        <div id="page-reveal" class="page">
+            <h2 id="status-title">EXTRACTING...</h2>
+            <div id="scan-text"></div>
+            <div class="progress-bar" id="p-bar"><div class="progress-fill" id="p-fill"></div></div>
+
+            <p id="swipe-hint" style="display:none; font-size:8px; margin-bottom:10px;">(Click kartu untuk geser)</p>
+            <div id="card-deck">
+                <div class="swipe-card" onclick="swipe(this)" style="z-index: 4;">
+                    <img src="assets/Zabizz.png">
+                    <div class="card-label">MEMBER: ZABIZZ</div>
+                </div>
+                <div class="swipe-card" onclick="swipe(this)" style="z-index: 3;">
+                    <img src="assets/Dainveil.png">
+                    <div class="card-label">MEMBER: DAINVEIL</div>
+                </div>
+                <div class="swipe-card" onclick="swipe(this)" style="z-index: 2;">
+                    <img src="assets/Ermalio.png">
+                    <div class="card-label">MEMBER: ERMALIO</div>
+                </div>
+                <div class="swipe-card" onclick="swipe(this)" style="z-index: 1;">
+                    <img src="assets/Reinwal.png">
+                    <div class="card-label">MEMBER: REINWAL</div>
+                </div>
+            </div>
+
+            <div id="photo-container">
+                <img src="assets/gadink.png" alt="Gadink" id="gift-photo">
+                <div style="background:var(--mc-gui-bg); color:#333; padding:10px; font-size:10px; text-align:left;">
+                    <p>MEMBER: GADINK</p>
+                    <p style="color:var(--mc-rare)">RANK: LEGENDARY</p>
+                </div>
+            </div>
+            
+            <br>
+            <button id="download-btn" class="mc-button" style="display:none;">SIMPAN KE INVENTORY</button>
+            <br>
+            <a href="https://discord.gg/M4vTPXbpsA" target="_blank" style="text-decoration: none;">
+                <button id="discord-btn" class="mc-button" style="display:none; background-color: var(--discord-blurple); margin-top: 5px;">JOIN DISCORD SERVER</button>
+            </a>
+        </div>
+    </div>
+
+    <audio id="bg-music" loop><source src="assets/lagu.mp3" type="audio/mpeg"></audio>
+
+    <script>
+        let musicStarted = false;
+        let cardsSwiped = 0;
+
+        // Stage Logic
+        let stoneHP = 10;
+        function breakStone() {
+            if(!musicStarted) { document.getElementById('bg-music').play(); musicStarted=true; }
+            stoneHP--; document.getElementById('stone-hp').innerText = `HP: ${stoneHP}`;
+            createParticles(8, "#7a7a7a");
+            if(stoneHP <= 0) goToStage(2);
+        }
+
+        let activeNodes = 4;
+        function setupStage2() {
+            const grid = document.getElementById('node-grid');
+            grid.innerHTML = '';
+            for(let i=0; i<9; i++) {
+                const node = document.createElement('div');
+                node.className = 'node';
+                if(i < 4) node.classList.add('active');
+                node.onclick = function() {
+                    if(this.classList.contains('active')) {
+                        this.classList.remove('active'); activeNodes--;
+                        createParticles(5, "#AA0000");
+                        if(activeNodes === 0) goToStage(3);
+                    }
+                };
+                grid.appendChild(node);
+            }
+        }
+
+        let currentStep = 1;
+        function checkSeq(val) {
+            if(val === currentStep) {
+                createParticles(10, "#55FF55"); currentStep++;
+                if(currentStep > 3) startReveal();
+            } else { currentStep = 1; alert("WRONG ORDER!"); }
+        }
+
+        // Reveal Sequence
+        function startReveal() {
+            goToStage('reveal');
+            const lines = ["> Unzipping...", "> Loading Members...", "> Found 5 Files..."];
+            let idx = 0;
+            const iv = setInterval(() => {
+                if(idx < lines.length) document.getElementById('scan-text').innerText = lines[idx++];
+                else { clearInterval(iv); runLoading(); }
+            }, 1000);
+        }
+
+        function runLoading() {
+            let w = 0;
+            const iv = setInterval(() => {
+                if(w >= 100) { clearInterval(iv); showDeck(); }
+                else { w += 2; document.getElementById('p-fill').style.width = w + "%"; }
+            }, 40);
+        }
+
+        function showDeck() {
+            document.getElementById('status-title').innerText = "FILES RECOVERED";
+            document.getElementById('scan-text').innerText = "Geser Kartu";
+            document.getElementById('p-bar').style.display = "none";
+            document.getElementById('card-deck').style.display = "block";
+            document.getElementById('swipe-hint').style.display = "block";
+        }
+
+        // Swipe Function
+        function swipe(el) {
+            createParticles(15, "#fff");
+            el.style.transform = "translateX(400px) rotate(20deg)";
+            el.style.opacity = "0";
+            el.style.pointerEvents = "none";
+            
+            cardsSwiped++;
+            if(cardsSwiped === 4) {
+                setTimeout(showFinalGadink, 600);
+            }
+        }
+
+        function showFinalGadink() {
+            document.getElementById('card-deck').style.display = "none";
+            document.getElementById('swipe-hint').style.display = "none";
+            document.getElementById('status-title').innerText = "FOUND LEGENDARY!";
+            document.getElementById('scan-text').style.display = "none";
+            
+            createParticles(60, "#FFAA00");
+            document.getElementById('photo-container').style.display = "block";
+            
+            // Show Buttons
+            document.getElementById('download-btn').style.display = "inline-block";
+            document.getElementById('discord-btn').style.display = "inline-block";
+
+            document.getElementById('download-btn').onclick = () => {
+                const a = document.createElement('a');
+                a.href = 'assets/gadink.png';
+                a.download = 'gadink_highres.png';
+                a.click();
+            };
+            document.getElementById('photo-container').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function goToStage(s) {
+            document.querySelectorAll('.page').forEach(p => { p.classList.remove('active'); p.style.display = 'none'; });
+            const next = (typeof s === 'number') ? document.getElementById('page-s'+s) : document.getElementById('page-'+s);
+            next.style.display = 'block';
+            setTimeout(() => next.classList.add('active'), 50);
+            if(s === 2) setupStage2();
+        }
+
+        function createParticles(count, color) {
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.width = p.style.height = '6px';
+                p.style.background = color;
+                p.style.left = '50%'; p.style.top = '50%';
+                document.body.appendChild(p);
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * 150 + 20;
+                p.animate([
+                    { transform: 'translate(-50%, -50%)', opacity: 1 },
+                    { transform: `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px)`, opacity: 0 }
+                ], { duration: 800 }).onfinish = () => p.remove();
+            }
+        }
+    </script>
+</body>
+</html>
